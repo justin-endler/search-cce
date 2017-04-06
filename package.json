@@ -1,0 +1,39 @@
+{
+  "name": "search-cce",
+  "version": "0.0.1",
+  "description": "Provides expanded search capability over an archive of the Catalog of Copyright Entries for music and sound recordings",
+  "config": {
+    "request": {
+      "host": "onlinebooks.library.upenn.edu",
+      "timeout": "30000",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5",
+        "Host": "onlinebooks.library.upenn.edu",
+        "Accept-Language": "en-US,en;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Connection": "keep-alive"
+      },
+      "maxSockets": 128
+    },
+    "years": {
+      "min": 1950,
+      "max": 1978
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/justin-endler/search-cce.git"
+  },
+  "author": "Justin Endler",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/justin-endler/search-cce.git/issues"
+  },
+  "homepage": "https://github.com/justin-endler/search-cce.git#readme",
+  "dependencies": {
+    "async": "2.2.x",
+    "cheerio": "0.22.x",
+    "nconf": "0.8.x",
+    "request": "2.81.x"
+  }
+}
