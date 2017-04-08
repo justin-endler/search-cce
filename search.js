@@ -147,14 +147,22 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
               }
             },
             function searchHalfTxt (getBookTxtResponse, getBookTxtBody, searchHalfTxtCb) {
+              // clean up the html and avoid encoded html entities
+              var book$ = cheerio.load(getBookTxtBody);
+              var $head = book$('head');
+              var $body = book$('body')
+              // keep the title tag, may be useful
+              $head.find('link, script, meta').remove();
+              var bookTxt = $body.find('pre').text();
+              $body.text(bookTxt);
+              // @todo need to reconstruct bookTxt as just the string
+              // @todo does not need to be html, just a string
+
               // cache the txt file
               if (!bookIsCached) {
                 // record canonical link within the text
-                let book$ = cheerio.load(getBookTxtBody);
-                let $head = book$('head');
-                $head.find('[rel=canonical]').remove();
                 $head.append(`<link href="${getBookTxtResponse.request.href}" rel="canonical">`);
-                fs.writeFile(`books/${bookFileName}`, book$.html());
+                fs.writeFile(`books/${bookFileName}`, bookTxt;
               }
               if (term.test(getBookTxtBody)) {
                 let result = {
