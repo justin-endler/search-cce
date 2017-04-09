@@ -35,6 +35,7 @@ async.waterfall([
 // Ensure there's a search term and save it
 // Ensure there's a directory for caching text file responses
 function validate (callback) {
+  console.info("term:", term); // @test
   if (!term) {
     return callback('Search term required');
   }
@@ -61,8 +62,8 @@ function years (callback) {
 
 function perYear (yearsResponse, yearsBody, perYearCallback) {
   // Establish years to be searched
-  var minYear = parseInt(nconf.get('min_year') || config.year.min, 10);
-  var maxYear = parseInt(nconf.get('max_year') || config.year.max, 10);
+  var minYear = parseInt(nconf.get('min_year') || config.years.min, 10);
+  var maxYear = parseInt(nconf.get('max_year') || config.years.max, 10);
 
   if (maxYear < minYear) {
     return perYearCallback('Upper year limit must be greater or equal to lower year limit.');
@@ -134,7 +135,7 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
                   var book$ = cheerio.load(data);
                   var response = {
                     request: {
-                      href: book$('[rel=canonical]', 'head').attr('href')
+                      href: (data.match(/[\n](.+)/) || [])[1] || ''
                     }
                   };
                   getBookTxtCb(null, response, data);
@@ -147,25 +148,22 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
               }
             },
             function searchHalfTxt (getBookTxtResponse, getBookTxtBody, searchHalfTxtCb) {
-              // clean up the html and avoid encoded html entities
-              var book$ = cheerio.load(getBookTxtBody);
-              var $body = book$('body');
-              var bookTxt = book$('pre').text();
-
               // cache the txt file
               if (!bookIsCached) {
+                let book$ = cheerio.load(getBookTxtBody);
                 // record the title and link
-                bookTxt = `${book$('title').text()}\n${getBookTxtResponse.request.href}\n${bookTxt}`;
-                fs.writeFile(`books/${bookFileName}`, bookTxt);
+                getBookTxtBody = `${book$('title').text()}\n${getBookTxtResponse.request.href}\n${book$('pre').text()}`;
+                fs.writeFile(`books/${bookFileName}`, getBookTxtBody);
               }
-              if (term.test(bookTxt)) {
+
+              if (term.test(getBookTxtBody)) {
                 let result = {
                   year,
                   book: getBookTxtResponse.request.href,
-                  entries: bookTxt.match(threeLineTerm)
+                  entries: getBookTxtBody.match(threeLineTerm)
                 };
                 if (!result.entries) {
-                  result.entries = bookTxt.match(twoLineTerm);
+                  result.entries = getBookTxtBody.match(twoLineTerm);
                 }
                 results.push(result);
               }
