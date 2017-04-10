@@ -11,6 +11,7 @@ nconf.argv();
 var term = nconf.get('term');
 var threeLineTerm;
 var twoLineTerm;
+var fourLineTerm;
 var results = [];
 
 async.waterfall([
@@ -45,6 +46,7 @@ function validate (callback) {
   }
 
   threeLineTerm = new RegExp(`.*?${term}.*?\n.+?\n.+`, 'gi');
+  fourLineTerm = new RegExp(`.+?\n\n.*?${term}.*?\n.+`, 'gi');
   twoLineTerm = new RegExp(`.*?${term}.*?\n.+`, 'gi');
   term = new RegExp(term, 'i');
 
@@ -160,11 +162,20 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
                 let result = {
                   year,
                   book: getBookTxtResponse.request.href,
-                  entries: getBookTxtBody.match(threeLineTerm)
+                  entries: getBookTxtBody.match(threeLineTerm) || []
                 };
-                if (!result.entries) {
-                  result.entries = getBookTxtBody.match(twoLineTerm);
-                }
+                (getBookTxtBody.match(twoLineTerm) || []).forEach(match => {
+                  if (result.entries.indexOf(match) === -1) {
+                    result.entries.push(match);
+                  }
+                });
+                (getBookTxtBody.match(fourLineTerm) || []).forEach(match => {
+                  if (result.entries.indexOf(match) === -1) {
+                    result.entries.push(match);
+                  }
+                });
+                // @todo entries are now bloated from above logic. need better regexes
+
                 results.push(result);
               }
               searchHalfTxtCb();

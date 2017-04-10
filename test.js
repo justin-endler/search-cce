@@ -1,3 +1,5 @@
+const colors = require('colors');
+
 const ericKlossEntries = {
   '1976soundrecordi33014libr_djvu': 0,
   '1977musicindexja33151libr_djvu': 0,
@@ -28,17 +30,36 @@ const searchScript = spawn('node', [
   '--min_year',
   '1966',
   '--max_year',
-  '1966'
+  '1978'
 ]);
 
-searchScript.stdout.on('data', (data) => {
-  console.log(`stdout: ${data}`);
+var output = '';
+
+searchScript.stdout.on('data', data => {
+  data = data.toString();
+  console.log(data);
+  output += data;
 });
 
-searchScript.stderr.on('data', (data) => {
-  console.log(`stderr: ${data}`);
+searchScript.stderr.on('data', data => {
+  console.log(`error: ${data}`);
 });
 
-searchScript.on('close', (code) => {
-  console.log(`child process exited with code ${code}`);
+searchScript.on('close', code => {
+  var results = eval((output.match(/Results:\n\n([\s\S]+)/) || [])[1] || '[]');
+  // test occurances
+  if (results.length === undefined) {
+    throw Error(colors.yellow('Results not an array'));
+  }
+  var resultsOccurancesMap = {};
+  results.forEach(result => {
+    var fileName = (result.book || '').split('/').pop().replace('.txt', '');
+    if (ericKlossEntries[fileName] !== undefined) {
+      if (ericKlossEntries[fileName] === result.entries.length) {
+        console.log(colors.green(`Occurances accurate for ${fileName}`));
+      } else {
+        throw Error(colors.red(`Occurances do not match for ${fileName}. ${ericKlossEntries[fileName]} known occurances vs ${result.entries.length} entries`));
+      }
+    }
+  });
 });

@@ -34,6 +34,7 @@
     "async": "2.2.x",
     "cheerio": "0.22.x",
     "nconf": "0.8.x",
-    "request": "2.81.x"
+    "request": "2.81.x",
+    "colors": "1.1.x"
   }
 }
