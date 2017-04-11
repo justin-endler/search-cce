@@ -30,7 +30,7 @@ const searchScript = spawn('node', [
   '--min_year',
   '1966',
   '--max_year',
-  '1978'
+  '1969'
 ]);
 
 var output = '';

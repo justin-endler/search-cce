@@ -4,6 +4,9 @@ const nconf = require('nconf');
 const async = require('async');
 const cheerio = require('cheerio');
 const request = require('request');
+const readline = require('readline');
+const Readable = require('stream').Readable;
+
 const config = require('./package.json').config;
 
 nconf.argv();
@@ -157,28 +160,57 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
                 getBookTxtBody = `${book$('title').text()}\n${getBookTxtResponse.request.href}\n${book$('pre').text()}`;
                 fs.writeFile(`books/${bookFileName}`, getBookTxtBody);
               }
+              // create a stream to search line by line
+              var getBookTxtBodyStream = new Readable();
+              getBookTxtBodyStream.push(getBookTxtBody);
+              getBookTxtBodyStream.push(null); // @todo necessary?
+              var lineReader = readline.createInterface({
+                input: getBookTxtBodyStream
+              });
 
-              if (term.test(getBookTxtBody)) {
-                let result = {
-                  year,
-                  book: getBookTxtResponse.request.href,
-                  entries: getBookTxtBody.match(threeLineTerm) || []
-                };
-                (getBookTxtBody.match(twoLineTerm) || []).forEach(match => {
-                  if (result.entries.indexOf(match) === -1) {
-                    result.entries.push(match);
-                  }
-                });
-                (getBookTxtBody.match(fourLineTerm) || []).forEach(match => {
-                  if (result.entries.indexOf(match) === -1) {
-                    result.entries.push(match);
-                  }
-                });
-                // @todo entries are now bloated from above logic. need better regexes
+              var lines = ['', '', '', ''];
+              var result = {
+                year,
+                book: getBookTxtResponse.request.href,
+                entries: []
+              };
 
-                results.push(result);
-              }
-              searchHalfTxtCb();
+              lineReader.on('line', function (line) {
+                lines.push(line);
+                lines.shift();
+                var validEntry = validateEntry(lines);
+                if (validEntry) {
+                  result.entries.push(validEntry);
+                }
+              });
+              lineReader.on('close', function () {
+                if (result.entries.length) {
+                  results.push(result);
+                }
+                searchHalfTxtCb();
+              });
+
+              // if (term.test(getBookTxtBody)) {
+              //   let result = {
+              //     year,
+              //     book: getBookTxtResponse.request.href,
+              //     entries: getBookTxtBody.match(threeLineTerm) || []
+              //   };
+              //   (getBookTxtBody.match(twoLineTerm) || []).forEach(match => {
+              //     if (result.entries.indexOf(match) === -1) {
+              //       result.entries.push(match);
+              //     }
+              //   });
+              //   (getBookTxtBody.match(fourLineTerm) || []).forEach(match => {
+              //     if (result.entries.indexOf(match) === -1) {
+              //       result.entries.push(match);
+              //     }
+              //   });
+              //   // @todo entries are now bloated from above logic. need better regexes
+
+              //   results.push(result);
+              // } // @test regex version
+              //searchHalfTxtCb();
             }
           ], eachBookCb);
         }, getCategoryBooksCb);
@@ -198,4 +230,83 @@ function range (min, max, inclusive) {
     numbers.push(max);
   }
   return numbers;
+}
+
+function validateEntry(lines) {
+  // contains the term
+  if (!term.test(lines.join())) {
+    return false;
+  }
+  // 4-line format
+  // first line is present and does not end with an entry id
+  // second line is not present (remove it)
+  // third line contains the term
+  // fourth line ends with an entry id
+  if (
+    (lines[0] && !endsWithEntryId(lines[0])) &&
+    lines[1] === '' &&
+    term.test(lines[2]) &&
+    endsWithEntryId(lines[3])
+  ) {
+    return `${lines[0].trim()} ${lines[2].trim()} ${lines[3].trim()}`;
+  }
+  // 4-line format
+  // first line contains term
+  // second line is not present (remove it)
+  // third line is present
+  // fourth line ends with an entry id
+  if (
+    term.test(lines[0]) &&
+    lines[1] === '' &&
+    lines[2] &&
+    endsWithEntryId(lines[3])
+  ) {
+    return `${lines[0].trim()} ${lines[2].trim()} ${lines[3].trim()}`;
+  }
+
+  // 3-line format (variation of above)
+  // first line is present and does not end with an entry id
+  // second line contains the term
+  // third line ends with an entry id
+  if (
+    (lines[0] && !endsWithEntryId(lines[0])) &&
+    term.test(lines[1]) &&
+    endsWithEntryId(lines[2])
+  ) {
+    return `${lines[0].trim()} ${lines[1].trim()} ${lines[2].trim()}`;
+  }
+  // 3-line format
+  // first line contains the term
+  // second line is present
+  // third line ends with an entry id
+  // (remove fourth line)
+  if (
+    term.test(lines[0]) &&
+    lines[1] &&
+    endsWithEntryId(lines[2])
+  ) {
+    return `${lines[0].trim()} ${lines[1].trim()} ${lines[2].trim()}`;
+  }
+
+  // 2-line format
+  // first line not present (remove)
+  // second line contains term
+  // third line present
+  // fourth line not present (remove)
+  // if (
+  //   !lines[0] &&
+  //   term.test(lines[1]) &&
+  //   lines[2] &&
+  //   !lines[3]
+  // ) {
+  //   return `${lines[1].trim()} ${lines[2].trim()}`;
+  // }
+
+  return false;
+}
+
+function endsWithEntryId(str) {
+  str = (str || '').trim();
+  // @todo there can be letters in the id so this is failing
+  return str && (/\d{3}\s*\./.test(str) || /\d{3}\s*-/.test(str));
 }
