@@ -168,7 +168,9 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
                 input: getBookTxtBodyStream
               });
 
-              var lines = ['', '', '', ''];
+              //var lines = ['', '', '', '']; // @test
+              var lines = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''];
+              var includedEntries = '';
               var result = {
                 year,
                 book: getBookTxtResponse.request.href,
@@ -179,7 +181,10 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
                 lines.push(line);
                 lines.shift();
                 var validEntry = validateEntry(lines);
-                if (validEntry) {
+                // not quite possible to distinguish between all entry types in validateEntry
+                // avoid adding false positives here
+                if (validEntry && includedEntries.indexOf(validEntry) === -1) {
+                  includedEntries += validEntry;
                   result.entries.push(validEntry);
                 }
               });
@@ -189,28 +194,6 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
                 }
                 searchHalfTxtCb();
               });
-
-              // if (term.test(getBookTxtBody)) {
-              //   let result = {
-              //     year,
-              //     book: getBookTxtResponse.request.href,
-              //     entries: getBookTxtBody.match(threeLineTerm) || []
-              //   };
-              //   (getBookTxtBody.match(twoLineTerm) || []).forEach(match => {
-              //     if (result.entries.indexOf(match) === -1) {
-              //       result.entries.push(match);
-              //     }
-              //   });
-              //   (getBookTxtBody.match(fourLineTerm) || []).forEach(match => {
-              //     if (result.entries.indexOf(match) === -1) {
-              //       result.entries.push(match);
-              //     }
-              //   });
-              //   // @todo entries are now bloated from above logic. need better regexes
-
-              //   results.push(result);
-              // } // @test regex version
-              //searchHalfTxtCb();
             }
           ], eachBookCb);
         }, getCategoryBooksCb);
@@ -218,6 +201,35 @@ function perYear (yearsResponse, yearsBody, perYearCallback) {
     ], eachCb);
   }, perYearCallback);
 }
+
+// new rules to try
+
+// For sveet people from Sveet Charles.
+// Performed by Sweet Charles, pseud, of
+// Charles Sherell. People PE-6603.
+// Phonodisc (2 s. 12 in. 33 1/3 rpm.)
+// Appl. au: Polydor, Inc., employer for
+// hire. C Polydor, Inc.; 28Jun7it; N18785.
+
+// N187B6.
+
+// Where have I known you before?
+// Performed by Return to Forever featuring
+// Chick Corea. Polydor PD 6509. Phonodisc
+// (2 s. 12 in. 33 1/3 rpm.) Appl. au;
+// Forever Dnlimited Productions. ® Polydor
+// International, G.H.B.H.; 6Sep7il; N18786.
+
+// N18787.
+
+// Good day. Performed by Lighthouse.
+// Polydor PD-6028. Phonodisc (2 s. 12 in.
+// 33 1/3 rpm. stereophonic) Appl. au:
+// Polydor, Inc., employer for hire.
+// e Polydor, Inc.; 27Aug71; N18787.
+
+// N18788.
+
 
 function range (min, max, inclusive) {
   min = parseInt(min, 10) || 0;
@@ -233,6 +245,26 @@ function range (min, max, inclusive) {
 }
 
 function validateEntry(lines) {
+  var termIndex = Math.floor(lines.length * .5);
+  // this would miss entries near the bottoms of files, but there's plenty of buffer
+  // at the bottom of each file
+  if (!term.test(lines[termIndex])) {
+    return false;
+  }
+  var entryStartIndex = 0;
+  for (let i = termIndex; i > 0; i--) {
+    // is line an entry id?
+  }
+// - when term is found in the middle of the 20...
+//   - to get beginning of entry, look back `lines` until
+//     - an entry id is found OR
+//     - the pattern space - one line - space is found
+//   - to get end of entry, look ahead until
+//     - an entry id is found
+
+}
+
+function validateEntryOrig(lines) {
   // contains the term
   if (!term.test(lines.join())) {
     return false;
@@ -287,20 +319,19 @@ function validateEntry(lines) {
   ) {
     return `${lines[0].trim()} ${lines[1].trim()} ${lines[2].trim()}`;
   }
-
   // 2-line format
   // first line not present (remove)
   // second line contains term
-  // third line present
+  // third line ends with entryId
   // fourth line not present (remove)
-  // if (
-  //   !lines[0] &&
-  //   term.test(lines[1]) &&
-  //   lines[2] &&
-  //   !lines[3]
-  // ) {
-  //   return `${lines[1].trim()} ${lines[2].trim()}`;
-  // }
+  if (
+    !lines[0] &&
+    term.test(lines[1]) &&
+    endsWithEntryId(lines[2]) &&
+    !lines[3]
+  ) {
+    return `${lines[1].trim()} ${lines[2].trim()}`;
+  }
 
   return false;
 }
@@ -308,5 +339,5 @@ function validateEntry(lines) {
 function endsWithEntryId(str) {
   str = (str || '').trim();
   // @todo there can be letters in the id so this is failing
-  return str && (/\d{3}\s*\./.test(str) || /\d{3}\s*-/.test(str));
+  return str && /E(?:U|FO|II|P|\))[\w'\*-\>]+?\s*(?:\.|$)/.test(str);
 }
