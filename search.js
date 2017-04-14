@@ -251,9 +251,42 @@ function validateEntry(lines) {
   if (!term.test(lines[termIndex])) {
     return false;
   }
+  // get start index
   var entryStartIndex = 0;
   for (let i = termIndex; i > 0; i--) {
-    // is line an entry id?
+    // does line end with an entry id?
+    if (endsWithEntryId(lines[i])) {
+      entryStartIndex = i + 1;
+      break;
+    }
+    // are there consecutive empty lines?
+    if (termIndex - i >= 2 && lines[i] === '' && lines[i + 1] === '') {
+      entryStartIndex = i + 2;
+      break;
+    }
+    // is there a line/space pattern typically found at the start of entries?
+    if (termIndex - i >= 3 && lines[i] === '' && lines[i + 1] && lines[i + 2] === '') {
+      entryStartIndex = i + 1;
+      break;
+    }
+    // get end index
+    var entryEndIndex = lines.length - 1;
+    for (let i = termIndex; i < lines.length; i++) {
+      // does line end with an entry id?
+      if (endsWithEntryId(lines[i])) {
+        entryEndIndex = i;
+        break
+      }
+      if (i - termIndex >= 2 && lines[i - 1] === '' && lines[i] === '') {
+        entryEndIndex = i - 2;
+        break;
+      }
+    }
+    var entry = ''
+    for (let i = entryStartIndex; i <= entryEndIndex; i++) {
+      entry += `${lines[i].trim()} `;
+    }
+    return entry.trim();
   }
 // - when term is found in the middle of the 20...
 //   - to get beginning of entry, look back `lines` until
@@ -338,6 +371,5 @@ function validateEntryOrig(lines) {
 
 function endsWithEntryId(str) {
   str = (str || '').trim();
-  // @todo there can be letters in the id so this is failing
-  return str && /E(?:U|FO|II|P|\))[\w'\*-\>]+?\s*(?:\.|$)/.test(str);
+  return str && /(?:EU|EFO|EII|EP|N|\))[\w'\*-\>]+?\s*(?:\.|$)/.test(str);
 }
